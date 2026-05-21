@@ -1,15 +1,8 @@
 package user
 
 import (
-	"errors"
+	"fmt"
 	"time"
-
-	"github.com/google/uuid"
-)
-
-var (
-	ErrUserAlreadyExists = errors.New("user already exists")
-	ErrUserNotFound      = errors.New("user not found")
 )
 
 type UserService struct {
@@ -18,8 +11,18 @@ type UserService struct {
 	logger             Logger
 }
 
-type UserResponse struct {
-	ID string
+type UserRepository interface {
+	FindByEmail(email Email) (*User, error)
+	FindById(id string) (*User, error)
+	SaveUser(user *User) error
+}
+
+type NotificationSender interface {
+	SendWelcomeEmail(email Email) error
+}
+
+type Logger interface {
+	Log(message string)
 }
 
 type UserServiceActions interface {
@@ -29,7 +32,7 @@ type UserServiceActions interface {
 
 func (s *UserService) RegisterUser(rawEmail string, name string) (*UserResponse, error) {
 	// Создание через домен, все инварианты - ответственность домена
-	email, err := domainUser.NewEmail(rawEmail)
+	email, err := NewEmail(rawEmail)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +46,8 @@ func (s *UserService) RegisterUser(rawEmail string, name string) (*UserResponse,
 	}
 
 	// Вся логика по созданию пользователя, все инварианты - ответственность домена
-	newUser := domainUser.NewUser(uuid.NewString(), email, time.Now().UTC())
+	now := time.Now().UTC()
+	newUser := NewUser(fmt.Sprintf("user_%d", now.UnixNano()), email, name, now)
 
 	if err := s.userRepository.SaveUser(newUser); err != nil {
 		return nil, err
@@ -55,7 +59,7 @@ func (s *UserService) RegisterUser(rawEmail string, name string) (*UserResponse,
 
 	s.logger.Log("User created")
 
-	return NewUserResponse(newUser), nil
+	return &UserResponse{ID: newUser.ID}, nil
 }
 
 func (s *UserService) ChangeEmail(userID string, rawEmail string) error {
@@ -69,7 +73,7 @@ func (s *UserService) ChangeEmail(userID string, rawEmail string) error {
 	}
 
 	// Инварианты по проверке имейла спрятаны в домене
-	email, err := domainUser.NewEmail(rawEmail)
+	email, err := NewEmail(rawEmail)
 	if err != nil {
 		return err
 	}

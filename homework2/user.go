@@ -14,7 +14,7 @@ func NewUser(id string, email Email, name string, now time.Time) *User {
 	return &User{
 		ID:        id,
 		Email:     email,
-		Name:	   name,
+		Name:      name,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
