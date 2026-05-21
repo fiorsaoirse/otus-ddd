@@ -1,21 +1,41 @@
-import { Order } from "./order";
+import { Customer } from "./customer";
+import { Currencies, Money } from "./money";
+import { Order, OrderDto } from "./order";
+import { IOrderFactory, OrderFactory } from "./order_factory";
 import { IOrderRepository } from "./order_repo";
+import { Product } from "./product";
 
-const createOrder = (id: string, customerID: string): Order => {
-  return new Order({ id, customerID });
+const customer: Customer = { id: "customer-1", level: "plain" };
+
+const createOrderDto = (id: string, customerID: string): OrderDto => {
+  return { id, customerID, maxCount: 10, orderLines: [] };
 };
 
-export const createOrderRepository = (initial: Array<Order> = []): IOrderRepository => {
+const createOrder = (id: string, customerID: string): Order => {
+  return Order.create(id, customerID);
+};
+
+const createOrderFactory = (): IOrderFactory => {
+  return new OrderFactory();
+};
+
+const createOrderRepository = (initial: Array<OrderDto> = []): IOrderRepository => {
   const orders = [...initial];
 
   return {
-    getById(id) {
-      const item = orders.find((order) => order.id === id) ?? null;
-      return Promise.resolve(item);
+    findById(id) {
+      const item = orders.find((order) => order.id === id);
+      return Promise.resolve(item ? Order.rehydrate(item) : null);
     },
-    getAllCustomerOrders(customerID) {
-      const items = orders.filter((o) => o.customerID === customerID);
+    findByCustomer(customerID) {
+      const items = orders
+        .filter((o) => o.customerID === customerID)
+        .map((order) => Order.rehydrate(order));
       return Promise.resolve(items);
+    },
+    saveOrder(order) {
+      orders.push(order.hydrate());
+      return Promise.resolve();
     },
   } satisfies IOrderRepository;
 };
@@ -23,46 +43,60 @@ export const createOrderRepository = (initial: Array<Order> = []): IOrderReposit
 describe("Order Repository", () => {
   it("returns an order by id", async () => {
     const order = createOrder("order-1", "customer-1");
-    const repository = createOrderRepository([order]);
+    const repository = createOrderRepository([createOrderDto(order.id, order.customerID)]);
 
-    await expect(repository.getById("order-1")).resolves.toBe(order);
+    const target = await repository.findById("order-1");
+
+    expect(target).toEqual(order);
   });
 
   it("returns null when order id does not exist", async () => {
-    const repository = createOrderRepository([
-      createOrder("order-1", "customer-1"),
-    ]);
+    const repository = createOrderRepository([createOrderDto("order-1", "customer-1")]);
 
-    await expect(repository.getById("missing-order")).resolves.toBeNull();
+    await expect(repository.findById("missing-order")).resolves.toBeNull();
   });
 
   it("returns all orders for a customer", async () => {
     const firstOrder = createOrder("order-1", "customer-1");
     const secondOrder = createOrder("order-2", "customer-2");
     const thirdOrder = createOrder("order-3", "customer-1");
-    const repository = createOrderRepository([firstOrder, secondOrder, thirdOrder]);
-
-    await expect(repository.getAllCustomerOrders("customer-1")).resolves.toEqual([
-      firstOrder,
-      thirdOrder,
+    const repository = createOrderRepository([
+      createOrderDto(firstOrder.id, firstOrder.customerID),
+      createOrderDto(secondOrder.id, secondOrder.customerID),
+      createOrderDto(thirdOrder.id, thirdOrder.customerID),
     ]);
+
+    await expect(repository.findByCustomer("customer-1")).resolves.toEqual([firstOrder, thirdOrder]);
   });
 
   it("returns an empty list when customer has no orders", async () => {
-    const repository = createOrderRepository([
-      createOrder("order-1", "customer-1"),
-    ]);
+    const repository = createOrderRepository([createOrderDto("order-1", "customer-1")]);
 
-    await expect(repository.getAllCustomerOrders("customer-2")).resolves.toEqual([]);
+    await expect(repository.findByCustomer("customer-2")).resolves.toEqual([]);
   });
 
   it("does not include orders added to the initial array after creation", async () => {
-    const initial = [createOrder("order-1", "customer-1")];
+    const initial = [createOrderDto("order-1", "customer-1")];
     const repository = createOrderRepository(initial);
 
-    initial.push(createOrder("order-2", "customer-1"));
+    initial.push(createOrderDto("order-2", "customer-1"));
 
-    await expect(repository.getAllCustomerOrders("customer-1")).resolves.toHaveLength(1);
-    await expect(repository.getById("order-2")).resolves.toBeNull();
+    await expect(repository.findByCustomer("customer-1")).resolves.toHaveLength(1);
+    await expect(repository.findById("order-2")).resolves.toBeNull();
+  });
+
+  it("saves and rehydrates order state", async () => {
+    const product = new Product("product-1", new Money(Currencies.Usd, 500));
+    const factory = createOrderFactory();
+    const order = factory.create("order-1", customer);
+    order.addItem(product, 2);
+
+    const repository = createOrderRepository();
+
+    await repository.saveOrder(order);
+    const target = await repository.findById("order-1");
+
+    expect(target).toEqual(order);
+    expect(target?.getTotalPrice().equals(new Money(Currencies.Usd, 1000))).toBe(true);
   });
 });
