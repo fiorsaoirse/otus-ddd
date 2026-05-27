@@ -52,7 +52,7 @@ export class Order {
 
   private constructor({ id, customerID, orderLines = [], maxCount = 10 }: OrderInitProps) {
     if (maxCount < 1) {
-      throw new Error('Max count must be positive");
+      throw new Error("Max count must be positive");
     }
 
     if (!id || !customerID) {
