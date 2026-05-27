@@ -51,6 +51,18 @@ export class Order {
   readonly customerID: ID;
 
   private constructor({ id, customerID, orderLines = [], maxCount = 10 }: OrderInitProps) {
+    if (maxCount < 1) {
+      throw new Error('Max count must be positive");
+    }
+
+    if (!id || !customerID) {
+      throw new Error("Ids must be not empty");
+    }
+
+    if (orderLines?.length && orderLines.length > maxCount) {
+      throw new Error(`Order can't contain more items than ${maxCount}`);
+    }
+    
     this.id = id;
     this.customerID = customerID;
     this.orderLines = orderLines;
@@ -75,7 +87,7 @@ export class Order {
     const isCountMoreThanAllowed = currentCount + quantity > this.maxCount;
 
     if (isCountMoreThanAllowed) {
-      throw new Error(`Order can not contain more than ${this.maxCount} items`);
+      throw new Error(`Order can not contain more items than ${this.maxCount} items`);
     }
 
     const item = OrderLine.create(product, quantity);
