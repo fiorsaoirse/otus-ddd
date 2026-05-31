@@ -1,11 +1,11 @@
 import { Money } from "./money";
-import { ID } from "./types";
+import { ProductID } from "./product-id";
 
 export class Product {
-  readonly id: ID;
+  readonly id: ProductID;
   readonly price: Money;
 
-  constructor(id: ID, price: Money) {
+  constructor(id: ProductID, price: Money) {
     this.id = id;
     this.price = price;
   }

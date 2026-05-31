@@ -8,5 +8,5 @@
     "skipLibCheck": true,
     "types": ["vitest/globals", "node"]
   },
-  "include": ["homework3/**/*.ts"]
+  "include": ["homework3/**/*.ts", "homework4/**/*.ts"]
 }

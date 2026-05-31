@@ -1,17 +1,16 @@
+import { CustomerID } from "./customer-id";
 import { Money } from "./money";
+import { OrderID } from "./order-id";
 import { Product } from "./product";
-import { ID } from "./types";
 
-export interface OrderLineDto {
-  product: Product;
-  quantity: number;
-}
+type OrderStatus = 'new' | 'paid' | 'shipped' | 'confirmed' | 'cancelled';
 
-export interface OrderDto {
-  id: ID;
-  customerID: ID;
-  maxCount: number;
-  orderLines: Array<OrderLineDto>;
+const orderStatusStateMachine: Record<OrderStatus, Array<OrderStatus>> = {
+  'new': ['paid', 'cancelled'],
+  'paid': ['shipped', 'cancelled'],
+  'shipped': ['confirmed'],
+  'confirmed': [],
+  'cancelled': []
 }
 
 class OrderLine {
@@ -27,6 +26,10 @@ class OrderLine {
     this.quantity = quantity;
   }
 
+  static create(product: Product, quantity: number): OrderLine {
+    return new OrderLine(product, quantity);
+  }
+
   update(quantity: number): void {
     if (quantity < 0) {
       throw new Error("The quantity of products must be positive");
@@ -34,19 +37,12 @@ class OrderLine {
 
     this.quantity = quantity;
   }
-
-  static create(product: Product, quantity: number): OrderLine {
-    return new OrderLine(product, quantity);
-  }
-
-  static rehydrate({ product, quantity }: OrderLineDto): OrderLine {
-    return new OrderLine(product, quantity);
-  }
 }
 
 interface OrderInitProps {
-  id: ID;
-  customerID: ID;
+  id: OrderID;
+  customerID: CustomerID;
+  status: OrderStatus;
   orderLines?: Array<OrderLine>;
   maxCount?: number;
 }
@@ -55,10 +51,12 @@ export class Order {
   private readonly maxCount: number;
   private readonly orderLines: Array<OrderLine>;
 
-  readonly id: ID;
-  readonly customerID: ID;
+  private status: OrderStatus;
 
-  private constructor({ id, customerID, orderLines = [], maxCount = 10 }: OrderInitProps) {
+  readonly id: OrderID;
+  readonly customerID: CustomerID;
+
+  private constructor({ id, customerID, orderLines = [], maxCount = 10, status }: OrderInitProps) {
     if (maxCount < 1) {
       throw new Error("Max count must be positive");
     }
@@ -70,24 +68,16 @@ export class Order {
     if (orderLines.length > maxCount) {
       throw new Error(`Order can't contain more items than ${maxCount}`);
     }
-
+    
     this.id = id;
     this.customerID = customerID;
     this.orderLines = orderLines;
     this.maxCount = maxCount;
+    this.status = status;
   }
 
-  static create(id: ID, customerID: ID, maxCount = 10): Order {
-    return new Order({ id, customerID, maxCount });
-  }
-
-  static rehydrate({ id, customerID, orderLines, maxCount }: OrderDto): Order {
-    return new Order({
-      id,
-      customerID,
-      orderLines: orderLines.map((line) => OrderLine.rehydrate(line)),
-      maxCount,
-    });
+  static create(id: OrderID, customerID: CustomerID, maxCount = 10): Order {
+    return new Order({ id, customerID, maxCount, status: 'new' });
   }
 
   addItem(product: Product, quantity: number): void {
@@ -113,12 +103,25 @@ export class Order {
     });
   }
 
-  hydrate(): OrderDto {
-    return {
-      id: this.id,
-      customerID: this.customerID,
-      maxCount: this.maxCount,
-      orderLines: this.orderLines.map(({ product, quantity }) => ({ product, quantity })),
-    };
+  confirm(): void {
+    this.updateStatus('confirmed');
+    // return new 
+    
+  }
+
+  updateStatus(to: OrderStatus) {
+    // Вообще по-хорошему такая штука должна решаться через finite state machine
+    // но т.к. проект учебный, возьму подобие стейт машины и минимальное количество статусов
+    const isInFiniteState = orderStatusStateMachine[this.status].length === 0;
+    if (isInFiniteState) {
+      throw new Error(`Order is in the finite state ${this.status}, can not be changed to ${to}`)
+    }
+
+    const possibleTransitions = orderStatusStateMachine[this.status];
+    if (!possibleTransitions.includes(to)) {
+      throw new Error(`The transition from ${this.status} to ${to} is unaviable`)
+    }
+
+    this.status = to;
   }
 }

@@ -5,7 +5,7 @@ import { IOrderRepository } from "./order_repo";
 import { ID, ILogger } from "./types";
 
 // Application service
-export class OrderService {
+export class OrderApplicationService {
     constructor(
         private readonly orderRepository: IOrderRepository, 
         private readonly customerRepository: ICustomerRepository,
