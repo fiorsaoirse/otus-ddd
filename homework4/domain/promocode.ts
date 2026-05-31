@@ -1,9 +1,7 @@
 import { Money } from "./money";
 
-enum PromocodeStatus {
-    Active = "Active",
-    Expired = "Expired"
-}
+const MIN_DISCOUNT_PERCENT = 1;
+const MAX_DISCOUNT_PERCENT = 100;
 
 export class Promocode {
     constructor(
@@ -24,8 +22,14 @@ export class Promocode {
             throw new Error('Promocode start can not be in the past');
         }
 
-        if (!Number.isInteger(discountPercent) || discountPercent < 1 || discountPercent > 100) {
-            throw new Error('Promocode discount percent must be an integer from 1 to 100');
+        if (
+          !Number.isInteger(discountPercent) ||
+          discountPercent < MIN_DISCOUNT_PERCENT ||
+          discountPercent > MAX_DISCOUNT_PERCENT
+        ) {
+          throw new Error(
+            `Promocode discount percent must be an integer from ${MIN_DISCOUNT_PERCENT} to ${MAX_DISCOUNT_PERCENT}`,
+          );
         }
     }
 

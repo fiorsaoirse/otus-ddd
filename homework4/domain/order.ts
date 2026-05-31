@@ -1,7 +1,10 @@
 import { CustomerID } from "./customer-id";
+import { OrderConfirmedEvent } from "./events/order-confirmed";
+import { DomainEvent } from "./events/domain-event";
 import { Money } from "./money";
 import { OrderID } from "./order-id";
 import { Product } from "./product";
+import { IDispatchable } from "./events/types";
 
 type OrderStatus = 'new' | 'paid' | 'shipped' | 'confirmed' | 'cancelled';
 
@@ -47,10 +50,13 @@ interface OrderInitProps {
   maxCount?: number;
 }
 
-export class Order {
+// тут можно будет добавлять типы других доменных событий
+type OrderDomainEvent = DomainEvent<OrderConfirmedEvent>;
+export class Order implements IDispatchable {
   private readonly maxCount: number;
   private readonly orderLines: Array<OrderLine>;
 
+  private readonly events: Array<OrderDomainEvent>;
   private status: OrderStatus;
 
   readonly id: OrderID;
@@ -68,16 +74,18 @@ export class Order {
     if (orderLines.length > maxCount) {
       throw new Error(`Order can't contain more items than ${maxCount}`);
     }
-    
+
     this.id = id;
     this.customerID = customerID;
     this.orderLines = orderLines;
     this.maxCount = maxCount;
     this.status = status;
+
+    this.events = [];
   }
 
   static create(id: OrderID, customerID: CustomerID, maxCount = 10): Order {
-    return new Order({ id, customerID, maxCount, status: 'new' });
+    return new Order({ id, customerID, maxCount, status: "new" });
   }
 
   addItem(product: Product, quantity: number): void {
@@ -104,9 +112,9 @@ export class Order {
   }
 
   confirm(): void {
-    this.updateStatus('confirmed');
-    // return new 
-    
+    this.updateStatus("confirmed");
+    const orderEvent = new OrderConfirmedEvent(this.id, this.customerID, this.getTotalPrice());
+    this.addEvent(new DomainEvent(orderEvent));
   }
 
   updateStatus(to: OrderStatus) {
@@ -114,14 +122,29 @@ export class Order {
     // но т.к. проект учебный, возьму подобие стейт машины и минимальное количество статусов
     const isInFiniteState = orderStatusStateMachine[this.status].length === 0;
     if (isInFiniteState) {
-      throw new Error(`Order is in the finite state ${this.status}, can not be changed to ${to}`)
+      throw new Error(`Order is in the finite state ${this.status}, can not be changed to ${to}`);
     }
 
     const possibleTransitions = orderStatusStateMachine[this.status];
     if (!possibleTransitions.includes(to)) {
-      throw new Error(`The transition from ${this.status} to ${to} is unaviable`)
+      throw new Error(`The transition from ${this.status} to ${to} is unaviable`);
     }
 
     this.status = to;
+  }
+
+  pullEvents(): ReadonlyArray<Readonly<DomainEvent>> {
+    const slice = [...this.events];
+    this.clearEvents();
+
+    return slice;
+  }
+
+  addEvent(event: Readonly<OrderDomainEvent>): void {
+    this.events.push(event);
+  }
+
+  clearEvents(): void {
+    this.events.length = 0;
   }
 }

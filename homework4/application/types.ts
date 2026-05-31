@@ -4,6 +4,10 @@ export interface ILogger {
   log(message: unknown): void;
 }
 
+export interface INotificationSender {
+  send(message: string): Promise<void>;
+}
+
 export interface ProductDto {
     id: string;
     currency: Currencies;
