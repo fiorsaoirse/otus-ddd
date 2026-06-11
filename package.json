@@ -1,7 +1,8 @@
 {
   "scripts": {
     "test:homework3": "vitest run homework3/order_repo.test.ts",
-    "test:homework4": "vitest run homework4/domain/services/order_domain_service.test.ts homework4/application/services/order-service.test.ts"
+    "test:homework4": "vitest run homework4/domain/services/order_domain_service.test.ts homework4/application/services/order-service.test.ts",
+    "test:homework5": "vitest run homework5/domain/services/order_domain_service.test.ts homework5/application/services/order-service.test.ts homework5/application/sagas/checkout-saga.test.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
