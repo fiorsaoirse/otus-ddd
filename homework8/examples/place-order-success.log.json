@@ -1,0 +1,27 @@
+{
+  "level": "info",
+  "timestamp": "2026-07-08T14:32:17.481Z",
+  "message": "Order successfully placed",
+  "correlationId": "01JZMMQDQZ9S6C8X3Y5A1V7B2N",
+  "aggregateId": "order-8f62d1c4",
+  "payload": {
+    "customerId": "customer-42",
+    "items": [
+      {
+        "productId": "product-101",
+        "quantity": 2
+      },
+      {
+        "productId": "product-205",
+        "quantity": 1
+      }
+    ],
+    "promoCode": "SUMMER10",
+    "deliveryAddress": {
+      "city": "Berlin",
+      "street": "[REDACTED]",
+      "house": "[REDACTED]",
+      "apartment": "[REDACTED]"
+    }
+  }
+}
